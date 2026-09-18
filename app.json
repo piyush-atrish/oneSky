@@ -20,6 +20,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b8394453-ee4d-481b-b638-4a4b94052837"
+      }
+    },
+    "owner": "piyushtest19s-team"
   }
 }
