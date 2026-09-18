@@ -34,7 +34,6 @@ import { StarsLayer } from './StarsLayer';
  * suspenders, not dead code.
  */
 
-THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 /**
  * The app's root canvas: a fixed camera at the observer's origin,
  * looking toward the Milestone-1 test scene's star cluster, over a
@@ -42,6 +41,9 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
  * their final draw-order position.
  */
 export function SkyCanvas(){
+
+  THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+  
   return (
     <Canvas
       camera={{
