@@ -1,6 +1,7 @@
 {
   "name": "onesky",
   "version": "1.0.0",
+  "license": "UNLICENSED",
   "main": "index.ts",
   "dependencies": {
     "@react-three/fiber": "^9.7.0",
