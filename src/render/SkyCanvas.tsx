@@ -1,14 +1,18 @@
 /**
  * SkyCanvas.tsx
  *
- * The root React Three Fiber canvas. Owns three things: enforcing the
- * Z-up render convention documented in `Coordinates.ts`, configuring
- * the fixed Milestone-1 camera, and hosting `TerrainLayer`/`StarsLayer`
- * in their final draw-order position.
+ * The root React Three Fiber canvas. Owns two things now: enforcing the
+ * Z-up render convention documented in `Coordinates.ts`, and hosting
+ * `CameraManager`/`TerrainLayer`/`StarsLayer` in their final draw-order
+ * position. Ongoing camera orientation is no longer this file's job —
+ * as of Milestone 2, `CameraManager` drives it every frame from
+ * `useCameraStore`; this file only sets the camera's *initial*,
+ * static configuration (fov/position/up/near/far) via the `camera` prop.
  */
 
 import * as THREE from 'three';
-import { Canvas, type RootState } from '@react-three/fiber/native';
+import { Canvas } from '@react-three/fiber/native';
+import { CameraManager } from './CameraManager';
 import { TerrainLayer } from './TerrainLayer';
 import { StarsLayer } from './StarsLayer';
 
@@ -33,17 +37,15 @@ import { StarsLayer } from './StarsLayer';
  * module got imported first and raced this assignment — belt-and-
  * suspenders, not dead code.
  */
+THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 /**
- * The app's root canvas: a fixed camera at the observer's origin,
- * looking toward the Milestone-1 test scene's star cluster, over a
- * black background, with the ground terrain and star field mounted in
+ * The app's root canvas: a camera at the observer's origin (orientation
+ * now owned by `CameraManager`, not set here), over a black background,
+ * with the camera driver, ground terrain, and star field mounted in
  * their final draw-order position.
  */
 export function SkyCanvas(){
-
-  THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
-  
   return (
     <Canvas
       camera={{
@@ -53,24 +55,34 @@ export function SkyCanvas(){
         near: 0.1,
         far: 100,
       }}
-      onCreated={(state : RootState) => {
-        // Re-assert `up` immediately before `lookAt`, colocated with it:
-        // `Object3D.lookAt()` computes its resulting orientation *using
-        // the object's current `.up`* as the reference for "which way is
-        // roll-neutral" — get the order backwards (rotate first, correct
-        // `up` after) and the camera still points at the right target,
-        // but with the wrong roll. Keeping these two lines adjacent
-        // means that invariant can't drift apart later even if this
-        // callback grows.
-
-        state.camera.up.set(0, 0, 1);
-        state.camera.lookAt(0, 1, 0);
-      }}
     >
       {/* Deep-space black. Declarative rather than an imperative
           `scene.background = ...` in onCreated, so it stays reactive
           if this ever needs to respond to props/state later. */}
       <color attach="background" args={['#000000']} />
+      {/*
+        No more `onCreated`/`lookAt` here — it was removed, not just
+        left unused, because it would be actively wrong to keep: R3F
+        renders the first frame immediately after `onCreated` fires, and
+        CameraManager's `useFrame` runs on every one of those frames,
+        including that first one — so any orientation set in `onCreated`
+        would be overwritten before it was ever visible. One `up.set()`
+        re-assertion doesn't need to live here either anymore: it was
+        only ever colocated with the `lookAt` call it protected: now
+        that CameraManager is the sole owner of orientation, its own
+        `useFrame` is the place that ordering guarantee belongs (see its
+        source for how it's still upheld there).
+
+        WORTH CONFIRMING: `CameraManager`'s default look direction
+        (azimuth 0 → world +X) is not the same direction the old
+        `lookAt(0, 1, 0)` pointed (+Y — roughly where this milestone's
+        Orion test-star cluster sits, RA ~78-101° in this project's
+        az≈ra identity mapping). Since `useCameraStore`'s default
+        azimuth is out of scope for this change, the app will now boot
+        looking at empty sky near RA 0° instead of the star cluster,
+        until that default is revisited.
+      */}
+      <CameraManager />
       <TerrainLayer />
       <StarsLayer />
     </Canvas>
