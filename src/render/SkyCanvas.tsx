@@ -15,6 +15,7 @@ import { Canvas } from '@react-three/fiber/native';
 import { CameraManager } from './CameraManager';
 import { TerrainLayer } from './TerrainLayer';
 import { StarsLayer } from './StarsLayer';
+import { ConstellationsLayer } from './ConstellationsLayer';
 
 /**
  * Global Z-up enforcement.
@@ -84,6 +85,7 @@ export function SkyCanvas(){
       */}
       <CameraManager />
       <TerrainLayer />
+      <ConstellationsLayer/>
       <StarsLayer />
     </Canvas>
   );
