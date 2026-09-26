@@ -77,8 +77,9 @@
  * equatorial math, and doesn't try to guess at horizon behavior early.
  */
 
+import * as THREE from 'three';
 import { Vector3 } from './Vector3';
-import { DEGREES_TO_RADIANS, RADIANS_TO_DEGREES } from './MathConstants';
+import { DEGREES_TO_RADIANS, RADIANS_TO_DEGREES, HOURS_TO_DEGREES } from './MathConstants';
 
 /**
  * A direction on the celestial sphere: right ascension and declination,
@@ -173,4 +174,40 @@ function normalizeDegrees(degrees: number): number {
  */
 export function equatorialToRenderSpace(v: Vector3): Vector3 {
   return v;
+}
+
+export function raDecToCartesian(raHours: number, decDegrees: number, radius = 100): THREE.Vector3 {
+  const raRad = raHours * HOURS_TO_DEGREES * DEGREES_TO_RADIANS;
+  const decRad = decDegrees * DEGREES_TO_RADIANS;
+  const cosDec = Math.cos(decRad);
+  return new THREE.Vector3(
+    radius * cosDec * Math.cos(raRad),
+    radius * cosDec * Math.sin(raRad),
+    radius * Math.sin(decRad),
+  );
+}
+
+// Piecewise-linear approximation of blackbody-ish star color across B-V,
+// calibrated at O/B (blue) through G (white/yellow, Sun-like at ~0.6)
+// to M (red) spectral classes. Not a physical blackbody/CIE computation —
+// a small set of representative stops, linearly interpolated.
+const BV_COLOR_STOPS: readonly [bv: number, r: number, g: number, b: number][] = [
+  [-0.4, 0.61, 0.7, 1.0],
+  [-0.1, 0.79, 0.85, 1.0],
+  [0.0, 1.0, 0.95, 1.0],
+  [0.3, 1.0, 0.98, 0.9],
+  [0.6, 1.0, 0.9, 0.7],
+  [1.0, 1.0, 0.75, 0.5],
+  [1.5, 1.0, 0.55, 0.35],
+  [2.0, 1.0, 0.4, 0.3],
+];
+
+export function bvToRGB(bv: number): THREE.Color {
+  const clamped = Math.min(2.0, Math.max(-0.4, bv));
+  let i = 0;
+  while (i < BV_COLOR_STOPS.length - 2 && clamped > BV_COLOR_STOPS[i + 1][0]) i++;
+  const [bv0, r0, g0, b0] = BV_COLOR_STOPS[i];
+  const [bv1, r1, g1, b1] = BV_COLOR_STOPS[i + 1];
+  const t = (clamped - bv0) / (bv1 - bv0);
+  return new THREE.Color(r0 + (r1 - r0) * t, g0 + (g1 - g0) * t, b0 + (b1 - b0) * t);
 }

@@ -1,71 +1,75 @@
-/**
- * StarsLayer.tsx
- *
- * The batched star point cloud: every named debug star plus the 100k-star
- * stress-test field, flattened once into a single `Float32Array` and
- * handed to the GPU as one `THREE.Points` draw call — the concrete
- * implementation of the "no CPU point culling" law: nothing here loops
- * over stars per-frame, only once, at mount, to build the buffer.
- */
-
 import { useMemo } from 'react';
-import { DEBUG_NAMED_STARS, generateStressTestStars, type StarData } from '../debug/TestSceneData';
-import { raDecToGeocentricVector } from '../math/Coordinates';
+import { STAR_CATALOG } from '../data/starCatalog';
+import { raDecToCartesian, bvToRGB } from '../math/Coordinates';
 
-/**
- * Distance (in scene units) each star is placed from the origin.
- *
- * Chosen well inside the camera's `far = 100` plane (see
- * `SkyCanvas.tsx`) and well outside `near = 0.1`, with generous margin
- * on both sides — there's no reason to hug either clip plane.
- */
-const STAR_FIELD_RADIUS = 50;
+// gl_PointSize scaled by inverse view-space depth for perspective
+// attenuation (mimics PointsMaterial's sizeAttenuation); 300 is a
+// tunable constant calibrated for this scene's star radius (50) and fov.
+const VERTEX_SHADER = `
+attribute float size;
+varying vec3 vColor;
+void main() {
+  vColor = color;
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+  gl_PointSize = size * (300.0 / -mvPosition.z);
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+// Circular soft-edged point sprite via gl_PointCoord distance-from-center,
+// instead of THREE.Points' default hard-edged square.
+const FRAGMENT_SHADER = `
+varying vec3 vColor;
+void main() {
+  float d = length(gl_PointCoord - vec2(0.5));
+  if (d > 0.5) discard;
+  gl_FragColor = vec4(vColor, smoothstep(0.5, 0.2, d));
+}
+`;
 
 export function StarsLayer(){
-  const positions = useMemo<Float32Array>(() => {
-    // Combining and generating here, inside the memo, rather than at
-    // module scope, keeps the 100k-star stress field's generation tied
-    // to this component's own mount/render lifecycle: it happens lazily,
-    // once, the first time StarsLayer actually renders — not eagerly at
-    // bundle-import time regardless of whether this component is used.
-    const allStars: readonly StarData[] = [...DEBUG_NAMED_STARS, ...generateStressTestStars()];
+  const { positions, colors, sizes } = useMemo(() => {
+    const count = STAR_CATALOG.length;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
 
-    const array = new Float32Array(allStars.length * 3);
-    for (let i = 0; i < allStars.length; i++) {
-      const star = allStars[i];
-      // raDecToGeocentricVector's contract already guarantees a unit
-      // vector (verified in Coordinates.ts's own round-trip checks), so
-      // there's nothing to re-normalize here. Reading .x/.y/.z straight
-      // off it and scaling inline — rather than calling vec.scale(50),
-      // which would allocate a second Vector3 per star just to be
-      // immediately unpacked into the array below — skips ~100k
-      // needless allocations across the full stress-test field.
-      const vec = raDecToGeocentricVector(star.raDeg, star.decDeg);
-      const offset = i * 3;
-      array[offset] = vec.x * STAR_FIELD_RADIUS;
-      array[offset + 1] = vec.y * STAR_FIELD_RADIUS;
-      array[offset + 2] = vec.z * STAR_FIELD_RADIUS;
-    }
-    return array;
+    STAR_CATALOG.forEach(([,ra, dec, mag, bv], i) => {
+      const p = raDecToCartesian(ra, dec, 50);
+      positions[i * 3] = p.x;
+      positions[i * 3 + 1] = p.y;
+      positions[i * 3 + 2] = p.z;
+
+      const c = bvToRGB(bv);
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+
+      sizes[i] = Math.max(0.5, 4.0 - mag);
+    });
+
+    return { positions, colors, sizes };
   }, []);
 
-  const starCount = positions.length / 3;
-    return(
-        <points>
-            <bufferGeometry>
-                <bufferAttribute 
-                attach="attributes-position" 
-                count={positions.length / 3} 
-                args={[positions, 3]} 
-                />
-            </bufferGeometry>
-            <pointsMaterial 
-                size={0.1} 
-                color="#ffffff" 
-                sizeAttenuation={true} 
-                depthTest={true} 
-                depthWrite={true} 
-            />
-        </points>
+  return (
+    <points>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
+        <bufferAttribute attach="attributes-size" args={[sizes, 1]} />
+      </bufferGeometry>
+      <shaderMaterial
+        args={[
+          {
+            vertexShader: VERTEX_SHADER,
+            fragmentShader: FRAGMENT_SHADER,
+            vertexColors: true,
+            transparent: true,
+            depthWrite: false,
+            depthTest: true,
+          },
+        ]}
+      />
+    </points>
   );
 }
