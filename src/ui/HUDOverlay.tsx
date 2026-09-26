@@ -18,6 +18,13 @@ export function HUDOverlay() {
       >
         <Text style={styles.label}>Constellations</Text>
       </Pressable>
+      <Pressable
+        onPress={() => useUIStore.getState().toggleCredits()}
+        hitSlop={8}
+        style={[styles.button, styles.creditsButton]}
+      >
+        <Text style={styles.label}>About</Text>
+      </Pressable>
     </View>
   );
 }
@@ -42,6 +49,9 @@ const styles = StyleSheet.create({
   buttonActive: {
     backgroundColor: 'rgba(255,255,255,0.28)',
     borderColor: 'rgba(255,255,255,0.6)',
+  },
+  creditsButton: {
+    marginTop: 8,
   },
   label: {
     color: '#ffffff',

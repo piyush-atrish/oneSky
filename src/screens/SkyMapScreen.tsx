@@ -4,6 +4,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import { SkyCanvas } from '../render/SkyCanvas';
 import { useCameraStore } from '../store/useCameraStore';
 import { HUDOverlay } from '../ui/HUDOverlay';
+import { CreditsOverlay } from '../ui/Creditsoverlay';
 
 const PAN_SENSITIVITY = 0.005;
 
@@ -59,6 +60,7 @@ export default function SkyMapScreen() {
           <View style={StyleSheet.absoluteFill} collapsable={false} />
         </GestureDetector>
         <HUDOverlay />
+        <CreditsOverlay />
       </View>
     </GestureHandlerRootView>
   );
