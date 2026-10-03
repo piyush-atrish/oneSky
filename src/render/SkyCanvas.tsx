@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber/native';
 import { CameraManager } from './CameraManager';
-import { TerrainLayer } from './TerrainLayer';
+import { HorizonLayer } from './Horizonlayer';
 import { StarsLayer } from './StarsLayer';
 import { ConstellationsLayer } from './ConstellationsLayer';
 import { SolarSystemLayer } from './Solarsystemlayer';
@@ -76,7 +76,7 @@ export function SkyCanvas() {
     >
       <color attach="background" args={['#000000']} />
       <CameraManager />
-      <TerrainLayer />
+      <HorizonLayer />
       <CelestialSphere />
     </Canvas>
   );
