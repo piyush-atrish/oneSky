@@ -5,10 +5,12 @@
   "main": "index.ts",
   "dependencies": {
     "@react-three/fiber": "^9.7.0",
+    "astronomy-engine": "^2.1.19",
     "expo": "~57.0.23",
     "expo-asset": "~57.0.17",
     "expo-file-system": "~57.0.7",
     "expo-gl": "~57.0.2",
+    "expo-location": "~57.0.20",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -16,6 +18,7 @@
     "react-native-gesture-handler": "~2.32.0",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-web": "^0.21.2",
+    "satellite.js": "^6.0.2",
     "three": "^0.186.0",
     "zustand": "^5.0.15"
   },

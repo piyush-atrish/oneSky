@@ -5,6 +5,8 @@ import { useUIStore } from '../store/useUIStore';
 export function HUDOverlay() {
   const insets = useSafeAreaInsets();
   const showConstellations = useUIStore((s) => s.showConstellations);
+  const showSolarSystem = useUIStore((s) => s.showSolarSystem);
+  const showSatellites = useUIStore((s) => s.showSatellites);
 
   return (
     <View
@@ -19,9 +21,23 @@ export function HUDOverlay() {
         <Text style={styles.label}>Constellations</Text>
       </Pressable>
       <Pressable
+        onPress={() => useUIStore.getState().toggleSolarSystem()}
+        hitSlop={8}
+        style={[styles.button, styles.spacedButton, showSolarSystem && styles.buttonActive]}
+      >
+        <Text style={styles.label}>Planets</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => useUIStore.getState().toggleSatellites()}
+        hitSlop={8}
+        style={[styles.button, styles.spacedButton, showSatellites && styles.buttonActive]}
+      >
+        <Text style={styles.label}>ISS</Text>
+      </Pressable>
+      <Pressable
         onPress={() => useUIStore.getState().toggleCredits()}
         hitSlop={8}
-        style={[styles.button, styles.creditsButton]}
+        style={[styles.button, styles.spacedButton]}
       >
         <Text style={styles.label}>About</Text>
       </Pressable>
@@ -50,7 +66,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.28)',
     borderColor: 'rgba(255,255,255,0.6)',
   },
-  creditsButton: {
+  spacedButton: {
     marginTop: 8,
   },
   label: {
