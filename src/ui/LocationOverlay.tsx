@@ -9,23 +9,34 @@ const CITIES = [
 ];
 
 const MODE_LABEL: Record<LocationMode, string> = {
-  gps: 'GPS Active',
+  gps: 'Current Location',
   manual: 'Manual Location',
   default: 'Default Location',
 };
 
+function handlePillPress() {
+  const { locationMode, isLoading, fetchLocation, setLocationMode } = useLocationStore.getState();
+  if (isLoading) return;
+  if (locationMode === 'gps') {
+    setLocationMode('manual');
+  } else {
+    fetchLocation();
+  }
+}
+
 export function LocationOverlay() {
   const insets = useSafeAreaInsets();
   const locationMode = useLocationStore((s) => s.locationMode);
+  const isLoading = useLocationStore((s) => s.isLoading);
 
   return (
     <View
       style={[styles.root, { paddingTop: insets.top + 12, paddingLeft: insets.left + 16 }]}
       pointerEvents="box-none"
     >
-      <View style={styles.pill}>
-        <Text style={styles.pillLabel}>{MODE_LABEL[locationMode]}</Text>
-      </View>
+      <Pressable onPress={handlePillPress} hitSlop={8} style={styles.pill}>
+        <Text style={styles.pillLabel}>{isLoading ? 'Locating…' : MODE_LABEL[locationMode]}</Text>
+      </Pressable>
       {locationMode !== 'gps' && (
         <View style={styles.cityRow}>
           {CITIES.map((city) => (

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
+import { useUIStore } from '../store/useUIStore';
 
 const GROUND_RADIUS = 500;
 const GROUND_OFFSET = 0.2;
@@ -68,14 +69,17 @@ function buildMarkerPositions(): Float32Array {
 }
 
 export function HorizonLayer() {
+  const showTerrain = useUIStore((s) => s.showTerrain);
   const markerPositions = useMemo(buildMarkerPositions, []);
 
   return (
     <>
-      <mesh position={[0, 0, -GROUND_OFFSET]}>
-        <circleGeometry args={[GROUND_RADIUS, 64]} />
-        <meshBasicMaterial color="#051005" />
-      </mesh>
+      {showTerrain && (
+        <mesh position={[0, 0, -GROUND_OFFSET]}>
+          <circleGeometry args={[GROUND_RADIUS, 64]} />
+          <meshBasicMaterial color="#051005" />
+        </mesh>
+      )}
       <lineSegments>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[markerPositions, 3]} />

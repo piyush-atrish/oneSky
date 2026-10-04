@@ -11,6 +11,7 @@ export interface LocationStoreState {
   readonly locationMode: LocationMode;
   readonly fetchLocation: () => Promise<void>;
   readonly setManualLocation: (latitude: number, longitude: number) => void;
+  readonly setLocationMode: (mode: LocationMode) => void;
 }
 
 export const useLocationStore = create<LocationStoreState>()((set) => ({
@@ -42,4 +43,5 @@ export const useLocationStore = create<LocationStoreState>()((set) => ({
   setManualLocation: (latitude, longitude) => {
     set({ latitude, longitude, isGranted: false, isLoading: false, locationMode: 'manual' });
   },
+  setLocationMode: (mode) => set({ locationMode: mode }),
 }));

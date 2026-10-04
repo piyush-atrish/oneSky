@@ -8,6 +8,7 @@ export function HUDOverlay() {
   const showConstellations = useUIStore((s) => s.showConstellations);
   const showSolarSystem = useUIStore((s) => s.showSolarSystem);
   const showSatellites = useUIStore((s) => s.showSatellites);
+  const showTerrain = useUIStore((s) => s.showTerrain);
 
   return (
     <>
@@ -36,6 +37,13 @@ export function HUDOverlay() {
           style={[styles.button, styles.spacedButton, showSatellites && styles.buttonActive]}
         >
           <Text style={styles.label}>ISS</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => useUIStore.getState().toggleTerrain()}
+          hitSlop={8}
+          style={[styles.button, styles.spacedButton, showTerrain && styles.buttonActive]}
+        >
+          <Text style={styles.label}>Terrain</Text>
         </Pressable>
         <Pressable
           onPress={() => useUIStore.getState().toggleCredits()}
