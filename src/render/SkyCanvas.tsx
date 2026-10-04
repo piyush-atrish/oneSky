@@ -2,27 +2,23 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber/native';
 import { CameraManager } from './CameraManager';
-import { HorizonLayer } from './Horizonlayer';
+import { HorizonLayer } from './HorizonLayer';
 import { StarsLayer } from './StarsLayer';
 import { ConstellationsLayer } from './ConstellationsLayer';
-import { SolarSystemLayer } from './Solarsystemlayer';
+import { SolarSystemLayer } from './SolarSystemLayer';
 import { SatelliteLayer } from './SatelliteLayer';
 import { useLocationStore } from '../store/useLocationStore';
-import { getLocalSiderealTime } from '../astro/TimeMath';
+import { getTiltCorrection, getMeridianRotation } from '../math/HorizonRotation';
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 const ROTATION_UPDATE_INTERVAL_MS = 1000;
-const Z_AXIS = new THREE.Vector3(0, 0, 1);
-const Y_AXIS = new THREE.Vector3(0, 1, 0);
-const HORIZON_CORRECTION = new THREE.Quaternion().setFromAxisAngle(Z_AXIS, -Math.PI / 2);
 
 function CelestialSphere() {
   const groupRef = useRef<THREE.Group>(null);
   const lastUpdateRef = useRef<number | null>(null);
   const cachedLatitudeRef = useRef<number | null>(null);
   const tiltCorrectionRef = useRef(new THREE.Quaternion());
-  const meridianRef = useRef(new THREE.Quaternion());
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -37,16 +33,11 @@ function CelestialSphere() {
 
     if (cachedLatitudeRef.current !== latitude) {
       cachedLatitudeRef.current = latitude;
-      const latRad = (latitude * Math.PI) / 180;
-      const tilt = new THREE.Quaternion().setFromAxisAngle(Y_AXIS, -(Math.PI / 2 - latRad));
-      tiltCorrectionRef.current.copy(HORIZON_CORRECTION).multiply(tilt);
+      tiltCorrectionRef.current.copy(getTiltCorrection(latitude));
     }
 
-    const lstHours = getLocalSiderealTime(new Date(now), longitude);
-    const lstRad = (lstHours * 15 * Math.PI) / 180;
-    meridianRef.current.setFromAxisAngle(Z_AXIS, -lstRad);
-
-    groupRef.current.quaternion.copy(tiltCorrectionRef.current).multiply(meridianRef.current);
+    const meridian = getMeridianRotation(new Date(now), longitude);
+    groupRef.current.quaternion.copy(tiltCorrectionRef.current).multiply(meridian);
   });
 
   return (

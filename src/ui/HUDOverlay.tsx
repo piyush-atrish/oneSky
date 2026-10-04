@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUIStore } from '../store/useUIStore';
+import { LocationOverlay } from './LocationOverlay';
 
 export function HUDOverlay() {
   const insets = useSafeAreaInsets();
@@ -9,39 +10,42 @@ export function HUDOverlay() {
   const showSatellites = useUIStore((s) => s.showSatellites);
 
   return (
-    <View
-      style={[styles.root, { paddingTop: insets.top + 12, paddingRight: insets.right + 16 }]}
-      pointerEvents="box-none"
-    >
-      <Pressable
-        onPress={() => useUIStore.getState().toggleConstellations()}
-        hitSlop={8}
-        style={[styles.button, showConstellations && styles.buttonActive]}
+    <>
+      <LocationOverlay />
+      <View
+        style={[styles.root, { paddingTop: insets.top + 12, paddingRight: insets.right + 16 }]}
+        pointerEvents="box-none"
       >
-        <Text style={styles.label}>Constellations</Text>
-      </Pressable>
-      <Pressable
-        onPress={() => useUIStore.getState().toggleSolarSystem()}
-        hitSlop={8}
-        style={[styles.button, styles.spacedButton, showSolarSystem && styles.buttonActive]}
-      >
-        <Text style={styles.label}>Planets</Text>
-      </Pressable>
-      <Pressable
-        onPress={() => useUIStore.getState().toggleSatellites()}
-        hitSlop={8}
-        style={[styles.button, styles.spacedButton, showSatellites && styles.buttonActive]}
-      >
-        <Text style={styles.label}>ISS</Text>
-      </Pressable>
-      <Pressable
-        onPress={() => useUIStore.getState().toggleCredits()}
-        hitSlop={8}
-        style={[styles.button, styles.spacedButton]}
-      >
-        <Text style={styles.label}>About</Text>
-      </Pressable>
-    </View>
+        <Pressable
+          onPress={() => useUIStore.getState().toggleConstellations()}
+          hitSlop={8}
+          style={[styles.button, showConstellations && styles.buttonActive]}
+        >
+          <Text style={styles.label}>Constellations</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => useUIStore.getState().toggleSolarSystem()}
+          hitSlop={8}
+          style={[styles.button, styles.spacedButton, showSolarSystem && styles.buttonActive]}
+        >
+          <Text style={styles.label}>Planets</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => useUIStore.getState().toggleSatellites()}
+          hitSlop={8}
+          style={[styles.button, styles.spacedButton, showSatellites && styles.buttonActive]}
+        >
+          <Text style={styles.label}>ISS</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => useUIStore.getState().toggleCredits()}
+          hitSlop={8}
+          style={[styles.button, styles.spacedButton]}
+        >
+          <Text style={styles.label}>About</Text>
+        </Pressable>
+      </View>
+    </>
   );
 }
 
