@@ -4,6 +4,7 @@
   "license": "UNLICENSED",
   "main": "index.ts",
   "dependencies": {
+    "@gorhom/bottom-sheet": "^5.2.14",
     "@react-three/fiber": "^9.7.0",
     "astronomy-engine": "^2.1.19",
     "expo": "~57.0.23",
@@ -16,6 +17,7 @@
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
+    "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-web": "^0.21.2",
     "satellite.js": "^6.0.2",
@@ -23,7 +25,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.6",
+    "@babel/core": "^7.29.7",
     "@babel/preset-env": "^8.0.6",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.2.2",
