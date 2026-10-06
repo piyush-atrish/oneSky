@@ -7,6 +7,8 @@ import { StarsLayer } from './StarsLayer';
 import { ConstellationsLayer } from './ConstellationsLayer';
 import { SolarSystemLayer } from './SolarSystemLayer';
 import { SatelliteLayer } from './SatelliteLayer';
+import { SelectionManager } from './SelectionManager';
+import { celestialGroupRef } from './sceneRefs';
 import { useLocationStore } from '../store/useLocationStore';
 import { getTiltCorrection, getMeridianRotation } from '../math/HorizonRotation';
 
@@ -15,13 +17,12 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 const ROTATION_UPDATE_INTERVAL_MS = 1000;
 
 function CelestialSphere() {
-  const groupRef = useRef<THREE.Group>(null);
   const lastUpdateRef = useRef<number | null>(null);
   const cachedLatitudeRef = useRef<number | null>(null);
   const tiltCorrectionRef = useRef(new THREE.Quaternion());
 
   useFrame(() => {
-    if (!groupRef.current) return;
+    if (!celestialGroupRef.current) return;
 
     const now = Date.now();
     if (lastUpdateRef.current !== null && now - lastUpdateRef.current < ROTATION_UPDATE_INTERVAL_MS) {
@@ -37,11 +38,11 @@ function CelestialSphere() {
     }
 
     const meridian = getMeridianRotation(new Date(now), longitude);
-    groupRef.current.quaternion.copy(tiltCorrectionRef.current).multiply(meridian);
+    celestialGroupRef.current.quaternion.copy(tiltCorrectionRef.current).multiply(meridian);
   });
 
   return (
-    <group ref={groupRef}>
+    <group ref={celestialGroupRef}>
       <ConstellationsLayer />
       <StarsLayer />
       <SolarSystemLayer />
@@ -69,6 +70,7 @@ export function SkyCanvas() {
       <CameraManager />
       <HorizonLayer />
       <CelestialSphere />
+      <SelectionManager />
     </Canvas>
   );
 }

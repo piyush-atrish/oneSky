@@ -3,8 +3,10 @@ import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SkyCanvas } from '../render/SkyCanvas';
 import { useCameraStore } from '../store/useCameraStore';
+import { useSelectionStore } from '../store/useSelectionStore';
 import { HUDOverlay } from '../ui/HUDOverlay';
-import { CreditsOverlay } from '../ui/Creditsoverlay';
+import { CreditsOverlay } from '../ui/CreditsOverlay';
+import { InfoBottomSheet } from '../ui/InfoBottomSheet';
 
 const PAN_SENSITIVITY = 0.005;
 
@@ -36,7 +38,7 @@ export default function SkyMapScreen() {
       .runOnJS(true)
       .onEnd((e, success) => {
         if (!success) return;
-        console.log('Tapped at:', e.x, e.y);
+        useSelectionStore.getState().setLastTap(e.x, e.y);
       });
 
     return Gesture.Exclusive(Gesture.Simultaneous(pan, pinch), tap);
@@ -47,10 +49,11 @@ export default function SkyMapScreen() {
       <View style={styles.root}>
         <SkyCanvas />
         <GestureDetector gesture={gesture}>
-          <View style={StyleSheet.absoluteFill} collapsable={false} />
+          <View collapsable={false} style={styles.touchLayer} />
         </GestureDetector>
         <HUDOverlay />
         <CreditsOverlay />
+        <InfoBottomSheet />
       </View>
     </GestureHandlerRootView>
   );
@@ -60,5 +63,12 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  touchLayer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
 });

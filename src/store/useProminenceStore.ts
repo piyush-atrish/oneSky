@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { STAR_CATALOG } from '../data/starCatalog';
 import { useCelestialStore } from './useCelestialStore';
+import { useLocationStore } from './useLocationStore';
 import { CelestialPositions } from '../astro/EphemerisService';
+import { getSatellitePosition } from '../astro/SatelliteService';
 
 export type ProminentEntityKind = 'star' | 'sun' | 'moon' | 'planet' | 'satellite';
 
@@ -11,6 +13,7 @@ export interface ProminentEntity {
   readonly magnitude: number;
   readonly raHours: number;
   readonly decDegrees: number;
+  readonly distance?: string;
 }
 
 export interface ProminenceStoreState {
@@ -19,6 +22,8 @@ export interface ProminenceStoreState {
 
 const TOP_COUNT = 30;
 const SUN_MAGNITUDE = -26.74;
+const ISS_MAGNITUDE = -3;
+const KM_PER_AU = 149597870.7;
 
 const PLANET_MAGNITUDES: Record<Exclude<keyof CelestialPositions, 'sun' | 'moon'>, number> = {
   mercury: 0.0,
@@ -32,32 +37,57 @@ const PLANET_MAGNITUDES: Record<Exclude<keyof CelestialPositions, 'sun' | 'moon'
 
 const PLANET_NAMES = Object.keys(PLANET_MAGNITUDES) as (keyof typeof PLANET_MAGNITUDES)[];
 
-const SATELLITE_SLOT: ProminentEntity = {
-  kind: 'satellite',
-  name: 'ISS',
-  magnitude: -3,
-  raHours: 0,
-  decDegrees: 0,
-};
-
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function formatAu(au: number): string {
+  return `${au.toFixed(2)} AU`;
+}
+
+function formatKm(au: number): string {
+  return `${String(Math.round(au * KM_PER_AU)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} km`;
+}
+
 function moonMagnitude(phaseAngle: number): number {
-  const photometricAngle = Math.abs(((phaseAngle % 360) + 360) % 360 - 180);
+  const photometricAngle = Math.abs((((phaseAngle % 360) + 360) % 360) - 180);
   return -12.73 + 0.026 * photometricAngle + 4e-9 * photometricAngle ** 4;
 }
 
-function buildTopEntities(positions: CelestialPositions): ProminentEntity[] {
+function buildIssEntity(issTle: [string, string] | null): ProminentEntity | null {
+  if (!issTle) return null;
+  const { latitude, longitude } = useLocationStore.getState();
+  const position = getSatellitePosition(issTle[0], issTle[1], new Date(), { latitude, longitude });
+  if (!position) return null;
+  return {
+    kind: 'satellite',
+    name: 'ISS',
+    magnitude: ISS_MAGNITUDE,
+    raHours: position.raHours,
+    decDegrees: position.decDegrees,
+  };
+}
+
+function buildTopEntities(
+  positions: CelestialPositions,
+  issTle: [string, string] | null,
+): ProminentEntity[] {
   const entities: ProminentEntity[] = [
-    { kind: 'sun', name: 'Sun', magnitude: SUN_MAGNITUDE, raHours: positions.sun.raHours, decDegrees: positions.sun.decDegrees },
+    {
+      kind: 'sun',
+      name: 'Sun',
+      magnitude: SUN_MAGNITUDE,
+      raHours: positions.sun.raHours,
+      decDegrees: positions.sun.decDegrees,
+      distance: formatAu(positions.sun.distanceAu),
+    },
     {
       kind: 'moon',
       name: 'Moon',
       magnitude: moonMagnitude(positions.moon.phaseAngle),
       raHours: positions.moon.raHours,
       decDegrees: positions.moon.decDegrees,
+      distance: formatKm(positions.moon.distanceAu),
     },
   ];
 
@@ -69,6 +99,7 @@ function buildTopEntities(positions: CelestialPositions): ProminentEntity[] {
       magnitude: PLANET_MAGNITUDES[name],
       raHours: position.raHours,
       decDegrees: position.decDegrees,
+      distance: formatAu(position.distanceAu),
     });
   }
 
@@ -76,8 +107,11 @@ function buildTopEntities(positions: CelestialPositions): ProminentEntity[] {
     entities.push({ kind: 'star', name: `HIP ${hipId}`, magnitude, raHours, decDegrees });
   }
 
+  const iss = buildIssEntity(issTle);
+  if (iss) entities.push(iss);
+
   entities.sort((a, b) => a.magnitude - b.magnitude);
-  return [...entities.slice(0, TOP_COUNT - 1), SATELLITE_SLOT];
+  return entities.slice(0, TOP_COUNT);
 }
 
 export const useProminenceStore = create<ProminenceStoreState>()(() => ({
@@ -85,6 +119,7 @@ export const useProminenceStore = create<ProminenceStoreState>()(() => ({
 }));
 
 useCelestialStore.subscribe((state, prevState) => {
-  if (!state.positions || state.lastComputed === prevState.lastComputed) return;
-  useProminenceStore.setState({ topEntities: buildTopEntities(state.positions) });
+  if (!state.positions) return;
+  if (state.lastComputed === prevState.lastComputed && state.issTle === prevState.issTle) return;
+  useProminenceStore.setState({ topEntities: buildTopEntities(state.positions, state.issTle) });
 });

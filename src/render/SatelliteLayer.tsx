@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber/native';
 import { raDecToCartesian } from '../math/Coordinates';
 import { useCelestialStore } from '../store/useCelestialStore';
 import { useUIStore } from '../store/useUIStore';
+import { useLocationStore } from '../store/useLocationStore';
 import { getSatellitePosition } from '../astro/SatelliteService';
 
 const UPDATE_INTERVAL_MS = 1000;
@@ -36,8 +37,12 @@ export function SatelliteLayer() {
       return;
     }
 
-    const position = getSatellitePosition(issTle[0], issTle[1], new Date(now));
-    if (!position) return;
+    const { latitude, longitude } = useLocationStore.getState();
+    const position = getSatellitePosition(issTle[0], issTle[1], new Date(now), { latitude, longitude });
+    if (!position) {
+      meshRef.current.visible = false;
+      return;
+    }
 
     const p = raDecToCartesian(position.raHours, position.decDegrees, 50);
     meshRef.current.position.set(p.x, p.y, p.z);
