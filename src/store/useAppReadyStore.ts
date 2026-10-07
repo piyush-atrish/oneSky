@@ -63,9 +63,10 @@ export const useAppReadyStore = create<AppReadyState>()((set, get) => {
 
     set({ engineStarted: true }); // App mounts the 3D scene from here
 
-    // Location never rejects; denied or no fix still "settles". The TLE fetch is deliberately absent:
-    // SatelliteLayer starts it on mount and nothing waits on it.
-    void useLocationStore.getState().fetchLocation().finally(() => completeGate('location'));
+    // initLocation reads the permission without prompting (the rationale screen owns the first request) and
+    // never rejects, so denied, undetermined or no fix all still "settle". The TLE fetch is deliberately
+    // absent: SatelliteLayer starts it on mount and nothing waits on it.
+    void useLocationStore.getState().initLocation().finally(() => completeGate('location'));
   };
 
   return {

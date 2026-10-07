@@ -11,6 +11,8 @@ import SkyMapScreen from './src/screens/SkyMapScreen';
 import { useAppReadyStore } from './src/store/useAppReadyStore';
 import { Colors } from './src/theme/colors';
 import { LoadingScreen } from './src/ui/LoadingScreen';
+import { LocationPermissionScreen } from './src/ui/fallbacks/LocationPermissionScreen';
+import { OfflineBadge } from './src/ui/fallbacks/OfflineBadge';
 
 LogBox.ignoreLogs(['THREE.Clock:']);
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -41,6 +43,8 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar style="light" />
         {engineStarted && <SkyMapScreen />}
+        {!showLoading && <OfflineBadge />}
+        {!showLoading && <LocationPermissionScreen />}
         {showLoading && fontsSettled && <LoadingScreen onShown={hideSplash} onFinished={dismissLoading} />}
       </View>
     </SafeAreaProvider>
