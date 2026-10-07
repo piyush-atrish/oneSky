@@ -11,6 +11,7 @@ import { SelectionManager } from './SelectionManager';
 import { celestialGroupRef } from './sceneRefs';
 import { useLocationStore } from '../store/useLocationStore';
 import { getTiltCorrection, getMeridianRotation } from '../math/HorizonRotation';
+import { SceneReadySignal } from './SceneReadySignal';
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -52,9 +53,6 @@ function CelestialSphere() {
 }
 
 export function SkyCanvas() {
-  useEffect(() => {
-    useLocationStore.getState().fetchLocation();
-  }, []);
 
   return (
     <Canvas
@@ -68,6 +66,7 @@ export function SkyCanvas() {
     >
       <color attach="background" args={['#000000']} />
       <CameraManager />
+      <SceneReadySignal />
       <HorizonLayer />
       <CelestialSphere />
       <SelectionManager />
