@@ -1,76 +1,53 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { expo } from '../../app.json';
 import { useUIStore } from '../store/useUIStore';
+import { Colors } from '../theme/colors';
+import { MAX_FONT_SCALE, Typography } from '../theme/typography';
+import { ErrorCard } from './fallbacks/ErrorCard';
 
+interface Section {
+  readonly heading: string;
+  readonly lines: readonly string[];
+}
+
+const SECTIONS: readonly Section[] = [
+  {
+    heading: 'Star catalog',
+    lines: ['HYG Database by Astronexus, compiled from the Hipparcos, Yale Bright Star and Gliese catalogs.'],
+  },
+  { heading: 'Constellation lines', lines: ['Stellarium, Western sky culture v1.0.'] },
+  { heading: 'Satellite orbits', lines: ['Orbital elements from CelesTrak.'] },
+  { heading: 'Astronomy', lines: ['astronomy-engine (MIT)', 'satellite.js (MIT)'] },
+  { heading: 'Built with', lines: ['React Native', 'Expo', 'Three.js and React Three Fiber', 'Reanimated', 'Zustand'] },
+];
+
+/** The "About" screen. Opened from the drawer or the tools fan; closed by its button or the Android back key. */
 export function CreditsOverlay() {
-  const showCredits = useUIStore((s) => s.showCredits);
-  if (!showCredits) return null;
+  const open = useUIStore((s) => s.panel === 'credits');
+  if (!open) return null;
 
   return (
-    <View style={styles.root} pointerEvents="box-none">
-      <View style={styles.card}>
-        <ScrollView>
-          <Text style={styles.title}>About oneSky</Text>
-          <Text style={styles.heading}>Star Catalog</Text>
-          <Text style={styles.body}>HYG Database (Astronexus / codebox)</Text>
-          <Text style={styles.heading}>Constellation Lines</Text>
-          <Text style={styles.body}>Stellarium (Western Sky Culture v1.0)</Text>
-        </ScrollView>
-        <Pressable onPress={() => useUIStore.getState().toggleCredits()} style={styles.closeButton}>
-          <Text style={styles.closeLabel}>Close</Text>
-        </Pressable>
-      </View>
-    </View>
+    <ErrorCard
+      title="About oneSky"
+      message={`Version ${expo.version}`}
+      actions={[{ label: 'Close', variant: 'primary', onPress: () => useUIStore.getState().closePanel() }]}
+    >
+      {SECTIONS.map(({ heading, lines }) => (
+        <View key={heading} style={styles.section}>
+          <Text accessibilityRole="header" style={styles.heading} maxFontSizeMultiplier={MAX_FONT_SCALE.heading}>
+            {heading}
+          </Text>
+          {lines.map((line) => (
+            <Text key={line} style={styles.line} maxFontSizeMultiplier={MAX_FONT_SCALE.small}>{line}</Text>
+          ))}
+        </View>
+      ))}
+    </ErrorCard>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  card: {
-    width: '80%',
-    maxHeight: '70%',
-    backgroundColor: 'rgba(20,20,25,0.95)',
-    borderRadius: 16,
-    padding: 20,
-  },
-  title: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  heading: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 12,
-  },
-  body: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  closeButton: {
-    marginTop: 20,
-    alignSelf: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  closeLabel: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  section: { marginTop: 16 },
+  heading: { ...Typography.heading, color: Colors.textPrimary },
+  line: { ...Typography.small, color: Colors.textPrimary, marginTop: 2 },
 });

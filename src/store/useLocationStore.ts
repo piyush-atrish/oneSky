@@ -1,3 +1,4 @@
+// src/store/useLocationStore.ts
 import { create } from 'zustand';
 import * as Location from 'expo-location';
 
@@ -75,12 +76,20 @@ export const useLocationStore = create<LocationStoreState>()((set, get) => ({
       return;
     }
 
+    // A failed GPS attempt must not wipe a city the user picked: it only resets an unresolved location.
+    const fail = (extra: Partial<LocationStoreState> = {}) =>
+      set((s) =>
+        s.locationMode === 'manual'
+          ? { isLoading: false, ...extra }
+          : { latitude: 0, longitude: 0, isGranted: false, isLoading: false, locationMode: 'default', ...extra },
+      );
+
     set({ isLoading: true });
     try {
       const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
       const permission = toPermission(status);
       if (permission !== 'granted') {
-        set({ latitude: 0, longitude: 0, isGranted: false, isLoading: false, locationMode: 'default', permission, canAskAgain });
+        fail({ permission, canAskAgain });
         return;
       }
       set({ permission, canAskAgain });
@@ -98,7 +107,7 @@ export const useLocationStore = create<LocationStoreState>()((set, get) => ({
         cachedGps: { latitude, longitude },
       });
     } catch {
-      set({ latitude: 0, longitude: 0, isGranted: false, isLoading: false, locationMode: 'default' });
+      fail();
     }
   },
   setManualLocation: (latitude, longitude) => {

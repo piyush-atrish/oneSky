@@ -2,7 +2,7 @@
   "expo": {
     "name": "onesky",
     "slug": "onesky",
-    "version": "1.0.0",
+    "version": "0.9.0-beta",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -10,7 +10,8 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#474747"
+          "backgroundColor": "#474747",
+          "image": "./assets/icon.png"
         }
       ]
     ],
@@ -19,12 +20,11 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#0B0D17"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.piyushtest19steam.onesky"
     },
     "web": {
       "favicon": "./assets/favicon.png"
