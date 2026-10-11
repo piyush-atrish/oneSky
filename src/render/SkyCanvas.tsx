@@ -12,6 +12,7 @@ import { celestialGroupRef } from './sceneRefs';
 import { useLocationStore } from '../store/useLocationStore';
 import { getTiltCorrection, getMeridianRotation } from '../math/HorizonRotation';
 import { SceneReadySignal } from './SceneReadySignal';
+import { LabelLayer } from './LabelLayer';
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -69,6 +70,7 @@ export function SkyCanvas() {
       <SceneReadySignal />
       <HorizonLayer />
       <CelestialSphere />
+      <LabelLayer />
       <SelectionManager />
     </Canvas>
   );

@@ -6,7 +6,6 @@
   "dependencies": {
     "@expo-google-fonts/righteous": "^0.4.1",
     "@expo-google-fonts/roboto": "^0.4.3",
-    "@gorhom/bottom-sheet": "^5.2.14",
     "@react-three/fiber": "^9.7.0",
     "astronomy-engine": "^2.1.19",
     "expo": "~57.0.23",

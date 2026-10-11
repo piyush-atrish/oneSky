@@ -7,6 +7,7 @@ import { useSelectionStore } from '../store/useSelectionStore';
 import { HUDOverlay } from '../ui/HUDOverlay';
 import { CreditsOverlay } from '../ui/CreditsOverlay';
 import { InfoBottomSheet } from '../ui/InfoBottomSheet';
+import { LabelOverlay } from '../render/LabelLayer';
 
 const PAN_SENSITIVITY = 0.005;
 
@@ -51,6 +52,7 @@ export default function SkyMapScreen() {
         <GestureDetector gesture={gesture}>
           <View collapsable={false} style={styles.touchLayer} />
         </GestureDetector>
+        <LabelOverlay />
         <HUDOverlay />
         <CreditsOverlay />
         <InfoBottomSheet />
