@@ -16,6 +16,13 @@ const SECTIONS: readonly Section[] = [
     lines: ['HYG Database by Astronexus, compiled from the Hipparcos, Yale Bright Star and Gliese catalogs.'],
   },
   { heading: 'Constellation lines', lines: ['Stellarium, Western sky culture v1.0.'] },
+  { 
+    heading: 'Information', 
+    lines: [
+      'Descriptions adapted from Wikipedia (CC BY-SA 4.0).',
+      'Planetary facts from NASA NSSDCA.'
+    ] 
+  },
   { heading: 'Satellite orbits', lines: ['Orbital elements from CelesTrak.'] },
   { heading: 'Astronomy', lines: ['astronomy-engine (MIT)', 'satellite.js (MIT)'] },
   { heading: 'Built with', lines: ['React Native', 'Expo', 'Three.js and React Three Fiber', 'Reanimated', 'Zustand'] },

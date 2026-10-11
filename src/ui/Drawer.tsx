@@ -26,6 +26,7 @@ const TOGGLES: readonly ToggleSpec[] = [
   { label: 'Planets', isOn: (s) => s.showSolarSystem, toggle: () => ui().toggleSolarSystem() },
   { label: 'Terrain', isOn: (s) => s.showTerrain, toggle: () => ui().toggleTerrain() },
   { label: 'ISS', isOn: (s) => s.showSatellites, toggle: () => ui().toggleSatellites() },
+  { label: 'Labels', isOn: (s) => s.showLabels, toggle: () => ui().toggleLabels() },
 ];
 
 function ToggleRow({ label, isOn, toggle }: ToggleSpec) {
