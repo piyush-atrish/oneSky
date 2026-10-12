@@ -4,7 +4,7 @@ import { ENTITY_DETAILS, getEntityDetail } from '../src/data/entityDetails';
 import { CONSTELLATION_LINES } from '../src/data/constellationLines';
 import { STAR_CATALOG } from '../src/data/starCatalog';
 import {
-  FRAME_LENGTH, LABEL_ENTITIES, countVisibleLabels, getAnchorDirection, labelOpacity, pickEntityId, projectLabel,
+  FRAME_LENGTH, LABEL_ENTITIES, LABEL_FADE_MS, LABEL_SLOTS, emptySlots, getAnchorDirection, pickEntityId, projectLabel, selectLabels,
   type PickFilters,
 } from '../src/render/entityGeometry';
 import { raDecToCartesian } from '../src/math/Coordinates';
@@ -151,23 +151,23 @@ describe('pickEntityId', () => {
   });
 });
 
-describe('label projection', () => {
-  function frameFor(camera: THREE.PerspectiveCamera, rotation: THREE.Quaternion, terrain: boolean): number[] {
-    const rot = new THREE.Matrix4().makeRotationFromQuaternion(rotation);
-    const m = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).multiply(rot);
-    const frame = new Array<number>(FRAME_LENGTH).fill(0);
-    m.elements.forEach((v, i) => (frame[i] = v));
-    frame[16] = rot.elements[2];
-    frame[17] = rot.elements[6];
-    frame[18] = rot.elements[10];
-    frame[19] = WIDTH;
-    frame[20] = HEIGHT;
-    frame[21] = terrain ? 1 : 0;
-    frame[22] = camera.fov;
-    return frame;
-  }
-  const flat = (v: THREE.Vector3) => [v.x, v.y, v.z];
+function frameFor(camera: THREE.PerspectiveCamera, rotation: THREE.Quaternion, terrain: boolean): number[] {
+  const rot = new THREE.Matrix4().makeRotationFromQuaternion(rotation);
+  const m = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).multiply(rot);
+  const frame = new Array<number>(FRAME_LENGTH).fill(0);
+  m.elements.forEach((v, i) => (frame[i] = v));
+  frame[16] = rot.elements[2];
+  frame[17] = rot.elements[6];
+  frame[18] = rot.elements[10];
+  frame[19] = WIDTH;
+  frame[20] = HEIGHT;
+  frame[21] = terrain ? 1 : 0;
+  frame[22] = camera.fov;
+  return frame;
+}
+const flat = (v: THREE.Vector3) => [v.x, v.y, v.z];
 
+describe('label projection', () => {
   it('matches three.js projection, including a rotated sky', () => {
     const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.4);
     const dir = new THREE.Vector3(1, 0.2, 0.3).normalize();
@@ -194,20 +194,79 @@ describe('label projection', () => {
   });
 });
 
-describe('label level of detail', () => {
-  it('fades with zoom and orders entities by how long they stay visible', () => {
-    expect(labelOpacity(10, 60)).toBe(1);
-    expect(labelOpacity(56, 60)).toBeCloseTo(0.5, 5);
-    expect(labelOpacity(60, 60)).toBe(0);
-    expect(labelOpacity(75, 60)).toBe(0);
-    for (let i = 1; i < LABEL_ENTITIES.length; i++) {
-      expect(LABEL_ENTITIES[i - 1].labelMaxFov).toBeGreaterThanOrEqual(LABEL_ENTITIES[i].labelMaxFov);
+describe('label selection', () => {
+  const indexOf = (id: string) => LABEL_ENTITIES.findIndex((e) => e.id === id);
+  const anchorsAt = (placements: Record<string, THREE.Vector3>) => {
+    const anchors = new Array<number>(LABEL_ENTITIES.length * 3).fill(0);
+    for (const [id, d] of Object.entries(placements)) anchors.splice(indexOf(id) * 3, 3, d.x, d.y, d.z);
+    return anchors;
+  };
+  const look = (dir: THREE.Vector3, fov = 45) => frameFor(cameraLookingAt(dir, fov), IDENTITY, false);
+  const shownIds = (slots: ReturnType<typeof emptySlots>) => slots.filter((s) => s.on).map((s) => LABEL_ENTITIES[s.entity].id);
+  const dir = new THREE.Vector3(1, 0.1, 0.4).normalize();
+
+  it('orders entities by importance: planets, then bright stars and constellations, then fainter stars', () => {
+    const fov = LABEL_ENTITIES.map((e) => e.labelMaxFov);
+    expect(fov).toEqual([...fov].sort((a, b) => b - a));
+    expect(LABEL_ENTITIES[0].type === 'planet' || LABEL_ENTITIES[0].type === 'moon').toBe(true);
+  });
+
+  it('labels an entity at the center of the view', () => {
+    const { slots, changed } = selectLabels(look(dir), anchorsAt({ sirius: dir }), emptySlots(), 0);
+    expect(shownIds(slots)).toEqual(['sirius']);
+    expect(changed).toBe(true);
+  });
+
+  it('lets the more important label win a collision, and never shows two overlapping labels', () => {
+    const { slots } = selectLabels(look(dir), anchorsAt({ mars: dir, cancer: dir, sirius: dir }), emptySlots(), 0);
+    expect(shownIds(slots)).toEqual(['mars']);
+  });
+
+  it('never overlaps and never exceeds the slot count, anywhere on the sky', () => {
+    const everything = new Array<number>(LABEL_ENTITIES.length * 3).fill(0);
+    LABEL_ENTITIES.forEach((e, i) => everything.splice(i * 3, 3, ...flat(getAnchorDirection(e, null) ?? new THREE.Vector3(0, 0, 0))));
+    for (let k = 0; k < 120; k++) {
+      const d = new THREE.Vector3(Math.sin(k * 1.7) * Math.cos(k), Math.cos(k * 1.7), Math.sin(k)).normalize();
+      for (const fov of [30, 75]) {
+        const { slots } = selectLabels(look(d, fov), everything, emptySlots(), 0);
+        expect(shownIds(slots).length).toBeLessThanOrEqual(LABEL_SLOTS);
+        expect(slots.every((s) => s.entity < 0 || s.on)).toBe(true);
+      }
     }
   });
 
-  it('shows nothing zoomed all the way out, and everything zoomed all the way in', () => {
-    expect(countVisibleLabels(75)).toBe(0);
-    expect(countVisibleLabels(10)).toBe(LABEL_ENTITIES.length);
-    expect(countVisibleLabels(45)).toBeGreaterThan(0);
+  it('shows the faintest names only when zoomed in, and the top tiers at every zoom', () => {
+    const faint = LABEL_ENTITIES.find((e) => e.type === 'star' && e.labelMaxFov <= 32)!;
+    const bright = LABEL_ENTITIES.find((e) => e.type === 'constellation')!;
+    const anchors = anchorsAt({ [faint.id]: dir, [bright.id]: new THREE.Vector3(-1, 0, 0.2).normalize() });
+    expect(shownIds(selectLabels(look(dir, 45), anchors, emptySlots(), 0).slots)).toContain(faint.id);
+    expect(shownIds(selectLabels(look(dir, 75), anchors, emptySlots(), 0).slots)).not.toContain(faint.id);
+    const wide = selectLabels(look(anchorDir(anchors, bright), 75), anchors, emptySlots(), 0).slots;
+    expect(shownIds(wide)).toContain(bright.id);
+  });
+
+  it('keeps a label until it has faded out before reusing its slot', () => {
+    const anchors = anchorsAt({ sirius: dir, vega: new THREE.Vector3(0, 1, 0.3).normalize() });
+    const first = selectLabels(look(dir), anchors, emptySlots(), 0).slots;
+    const away = look(new THREE.Vector3(-1, -1, 0).normalize()); // nothing in view
+    const fading = selectLabels(away, anchors, first, 1000);
+    expect(fading.changed).toBe(true);
+    expect(fading.slots[first.findIndex((s) => s.on)]).toMatchObject({ entity: indexOf('sirius'), on: false });
+    const stillFading = selectLabels(away, anchors, fading.slots, 1000 + LABEL_FADE_MS);
+    expect(stillFading.slots.some((s) => s.entity === indexOf('sirius'))).toBe(true);
+    const freed = selectLabels(away, anchors, stillFading.slots, 1000 + LABEL_FADE_MS + 100);
+    expect(freed.slots.every((s) => s.entity < 0)).toBe(true);
+  });
+
+  it('is stable: an unchanged view changes nothing', () => {
+    const anchors = anchorsAt({ sirius: dir });
+    const first = selectLabels(look(dir), anchors, emptySlots(), 0);
+    const again = selectLabels(look(dir), anchors, first.slots, 100);
+    expect(again.changed).toBe(false);
   });
 });
+
+function anchorDir(anchors: number[], entity: { id: string }) {
+  const i = LABEL_ENTITIES.findIndex((e) => e.id === entity.id);
+  return new THREE.Vector3(anchors[i * 3], anchors[i * 3 + 1], anchors[i * 3 + 2]);
+}

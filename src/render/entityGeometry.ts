@@ -188,21 +188,37 @@ export function pickEntityId(
 }
 
 // ---------------------------------------------------------------------------------------------
-// Labels: level of detail and projection
+// Labels: priority, projection and collision-free selection
 // ---------------------------------------------------------------------------------------------
 
-/** Dictionary entities that get a label, widest-visible first, so "visible at this zoom" is a prefix. */
-export const LABEL_ENTITIES: readonly EntityDetail[] = [...ENTITY_LIST].sort((x, y) => y.labelMaxFov - x.labelMaxFov);
-
-/** Degrees of zoom over which a label fades from hidden to fully visible. */
-export const LABEL_FADE_DEGREES = 8;
-
-/** How many labels (a prefix of LABEL_ENTITIES) are at all visible at this field of view. */
-export function countVisibleLabels(fov: number): number {
-  let count = 0;
-  while (count < LABEL_ENTITIES.length && LABEL_ENTITIES[count].labelMaxFov > fov) count++;
-  return count;
+/** How much an entity matters; also the order in which labels claim screen space. */
+function labelPriority(entity: EntityDetail): number {
+  const typeBonus = entity.type === 'planet' || entity.type === 'moon' ? 3 : entity.type === 'star' ? 2 : 1;
+  return entity.labelMaxFov * 10 + typeBonus;
 }
+
+/** Dictionary entities that get a label, most important first. The index is the entity's anchor slot. */
+export const LABEL_ENTITIES: readonly EntityDetail[] = [...ENTITY_LIST].sort((a, b) => labelPriority(b) - labelPriority(a));
+
+/**
+ * Zoom no longer fades labels. It only drops the faintest names from very wide views: an entity is eligible
+ * while the field of view is below `labelMaxFov + LABEL_FOV_HEADROOM`. With the generated dictionary that is
+ * 85 degrees for planets, 80 for constellations and the brightest stars, then 73 / 65 / 57 for fainter stars:
+ * every tier is eligible at the default 45 degrees, and the top tiers at the widest 75. Collisions are
+ * resolved by `selectLabels`.
+ */
+export const LABEL_FOV_HEADROOM = 25;
+
+/** The most labels ever on screen, and the number of text views the overlay ever mounts. */
+export const LABEL_SLOTS = 16;
+export const LABEL_GAP_X = 8;
+export const LABEL_HEIGHT = 16;
+export const LABEL_FADE_MS = 180;
+
+const RETIRE_MS = LABEL_FADE_MS + 80; // a slot is reused only after its old text has faded out
+const FRESH_PAD = 6; // breathing room a new label needs from its neighbors...
+const KEPT_PAD = -2; // ...and the overlap an already visible one tolerates, so labels do not flicker
+const CHAR_WIDTH = { star: 6.6, planet: 7.8, moon: 7.8, constellation: 9.4 } as const; // dp per character at the label fonts
 
 /**
  * Per-frame snapshot published by the canvas for the label overlay (a flat number array so it crosses to
@@ -220,14 +236,10 @@ export interface LabelPoint {
   readonly y: number;
 }
 
-/** Screen position of anchor `index` (3 numbers per anchor, all zero meaning unknown), or null if not drawn. */
-export function projectLabel(frame: readonly number[], anchors: readonly number[], index: number): LabelPoint | null {
+/** Screen position of a sky direction (all zeros meaning unknown), or null if it is not drawn. */
+export function projectAnchor(frame: readonly number[], x: number, y: number, z: number): LabelPoint | null {
   'worklet';
-  if (frame.length < FRAME_LENGTH) return null;
-  const x = anchors[index * 3];
-  const y = anchors[index * 3 + 1];
-  const z = anchors[index * 3 + 2];
-  if (x === undefined || (x === 0 && y === 0 && z === 0)) return null;
+  if (frame.length < FRAME_LENGTH || (x === 0 && y === 0 && z === 0)) return null;
 
   const w = frame[3] * x + frame[7] * y + frame[11] * z + frame[15];
   if (w <= 0) return null;
@@ -239,8 +251,80 @@ export function projectLabel(frame: readonly number[], anchors: readonly number[
   return { x: ((ndcX + 1) / 2) * frame[FRAME_WIDTH], y: ((1 - ndcY) / 2) * frame[FRAME_HEIGHT] };
 }
 
-/** 0 at or above the label's maximum field of view, rising to 1 over LABEL_FADE_DEGREES of zoom. */
-export function labelOpacity(fov: number, maxFov: number): number {
+/** Screen position of anchor `index` in a flat array of three numbers per anchor. */
+export function projectLabel(frame: readonly number[], anchors: readonly number[], index: number): LabelPoint | null {
   'worklet';
-  return Math.min(1, Math.max(0, (maxFov - fov) / LABEL_FADE_DEGREES));
+  const x = anchors[index * 3];
+  if (x === undefined) return null;
+  return projectAnchor(frame, x, anchors[index * 3 + 1], anchors[index * 3 + 2]);
+}
+
+export interface LabelSlot {
+  /** Index into LABEL_ENTITIES, or -1 when the slot is free. */
+  readonly entity: number;
+  readonly on: boolean;
+  /** When the slot's label was told to fade out. */
+  readonly offAt: number;
+}
+
+export const emptySlots = (): LabelSlot[] => Array.from({ length: LABEL_SLOTS }, () => ({ entity: -1, on: false, offAt: 0 }));
+
+/**
+ * Chooses which labels to show: eligible, on screen, most important first, skipping any that would overlap a
+ * label already chosen, at most LABEL_SLOTS. Labels already showing tolerate slight overlap (hysteresis), and a
+ * slot keeps its entity until the old label has faded out, so text never swaps while visible.
+ */
+export function selectLabels(
+  frame: readonly number[],
+  anchors: readonly number[],
+  previous: readonly LabelSlot[],
+  now: number,
+): { slots: LabelSlot[]; changed: boolean } {
+  const fov = frame[FRAME_FOV];
+  const width = frame[FRAME_WIDTH];
+  const height = frame[FRAME_HEIGHT];
+
+  const slotOf = new Map<number, number>();
+  previous.forEach((slot, i) => {
+    if (slot.entity >= 0) slotOf.set(slot.entity, i);
+  });
+  let freeSlots = previous.filter((s) => s.entity < 0 || (!s.on && now - s.offAt > RETIRE_MS)).length;
+
+  const boxes: (readonly [number, number, number, number])[] = [];
+  const chosen = new Set<number>();
+  for (let e = 0; e < LABEL_ENTITIES.length && chosen.size < LABEL_SLOTS; e++) {
+    const entity = LABEL_ENTITIES[e];
+    if (fov >= entity.labelMaxFov + LABEL_FOV_HEADROOM) continue;
+    const point = projectLabel(frame, anchors, e);
+    if (!point) continue;
+
+    const left = point.x + LABEL_GAP_X;
+    const right = left + CHAR_WIDTH[entity.type] * entity.name.length;
+    const top = point.y - LABEL_HEIGHT / 2;
+    if (right < 0 || left > width || top + LABEL_HEIGHT < 0 || top > height) continue;
+
+    const slot = slotOf.get(e);
+    if (slot === undefined && freeSlots === 0) continue;
+    const pad = slot !== undefined && previous[slot].on ? KEPT_PAD : FRESH_PAD;
+    const collides = boxes.some((b) => left - pad < b[2] && b[0] < right + pad && top - pad < b[3] && b[1] < top + LABEL_HEIGHT + pad);
+    if (collides) continue;
+
+    boxes.push([left, top, right, top + LABEL_HEIGHT]);
+    chosen.add(e);
+    if (slot === undefined) freeSlots--;
+  }
+
+  const next: LabelSlot[] = previous.map((slot) => {
+    if (slot.entity < 0) return slot;
+    if (chosen.has(slot.entity)) return slot.on ? slot : { ...slot, on: true };
+    if (slot.on) return { entity: slot.entity, on: false, offAt: now };
+    return now - slot.offAt > RETIRE_MS ? { entity: -1, on: false, offAt: 0 } : slot;
+  });
+  for (const e of chosen) {
+    if (slotOf.has(e)) continue;
+    const free = next.findIndex((slot) => slot.entity < 0);
+    if (free >= 0) next[free] = { entity: e, on: true, offAt: 0 };
+  }
+
+  return { slots: next, changed: next.some((s, i) => s.entity !== previous[i].entity || s.on !== previous[i].on) };
 }
