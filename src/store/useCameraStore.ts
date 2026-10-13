@@ -32,10 +32,10 @@ const MIN_ELEVATION_RAD = -1.3;
 const MAX_ELEVATION_RAD = 1.5;
 
 /** Narrowest allowed field of view — most "zoomed in". */
-const MIN_FOV_DEG = 10;
+export const MIN_FOV_DEG = 10;
 
 /** Widest allowed field of view — most "zoomed out". */
-const MAX_FOV_DEG = 75;
+export const MAX_FOV_DEG = 75;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -52,6 +52,8 @@ export interface CameraStoreState {
   readonly pan: (deltaAzimuth: number, deltaElevation: number) => void;
   /** Applies a pinch-gesture delta to fov, clamping as it goes. */
   readonly zoom: (deltaFov: number) => void;
+  /** Sets the fov outright, clamped. Prefer this for gestures: it cannot drift out of step with the store. */
+  readonly setFov: (fov: number) => void;
 }
 
 export const useCameraStore = create<CameraStoreState>()((set) => ({
@@ -75,4 +77,10 @@ export const useCameraStore = create<CameraStoreState>()((set) => ({
     set((state) => ({
       fov: clamp(state.fov + deltaFov, MIN_FOV_DEG, MAX_FOV_DEG),
     })),
+
+  setFov: (fov) =>
+    set((state) => {
+      const next = clamp(fov, MIN_FOV_DEG, MAX_FOV_DEG);
+      return next === state.fov ? state : { fov: next }; // same state object: subscribers are not notified
+    }),
 }));

@@ -1,49 +1,15 @@
-import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useCameraGestures } from '../camera/useCameraGestures';
+import { LabelOverlay } from '../render/LabelLayer';
 import { SkyCanvas } from '../render/SkyCanvas';
-import { useCameraStore } from '../store/useCameraStore';
-import { useSelectionStore } from '../store/useSelectionStore';
 import { HUDOverlay } from '../ui/HUDOverlay';
 import { CreditsOverlay } from '../ui/CreditsOverlay';
 import { InfoBottomSheet } from '../ui/InfoBottomSheet';
-import { LabelOverlay } from '../render/LabelLayer';
-
-const PAN_SENSITIVITY = 0.005;
+import { CompassOverlay } from '../render/CompassLayer';
 
 export default function SkyMapScreen() {
-  const gesture = useMemo(() => {
-    const pan = Gesture.Pan()
-      .runOnJS(true)
-      .onChange((e) => {
-        useCameraStore.getState().pan(e.changeX * PAN_SENSITIVITY, e.changeY * PAN_SENSITIVITY);
-      });
-
-    let startFov = 45;
-    let currentFov = 45;
-
-    const pinch = Gesture.Pinch()
-      .runOnJS(true)
-      .onStart(() => {
-        startFov = useCameraStore.getState().fov;
-        currentFov = startFov;
-      })
-      .onChange((e) => {
-        const targetFov = startFov / e.scale;
-        const deltaFov = targetFov - currentFov;
-        useCameraStore.getState().zoom(deltaFov);
-        currentFov = targetFov;
-      });
-
-    const tap = Gesture.Tap()
-      .runOnJS(true)
-      .onEnd((e, success) => {
-        if (!success) return;
-        useSelectionStore.getState().setLastTap(e.x, e.y);
-      });
-
-    return Gesture.Exclusive(Gesture.Simultaneous(pan, pinch), tap);
-  }, []);
+  const gesture = useCameraGestures();
 
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -53,6 +19,7 @@ export default function SkyMapScreen() {
           <View collapsable={false} style={styles.touchLayer} />
         </GestureDetector>
         <LabelOverlay />
+        <CompassOverlay/>
         <HUDOverlay />
         <CreditsOverlay />
         <InfoBottomSheet />
