@@ -13,6 +13,7 @@ import { useLocationStore } from '../store/useLocationStore';
 import { getTiltCorrection, getMeridianRotation } from '../math/HorizonRotation';
 import { SceneReadySignal } from './SceneReadySignal';
 import { LabelLayer } from './LabelLayer';
+import { CompassLayer } from './CompassLayer'; 
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -54,7 +55,6 @@ function CelestialSphere() {
 }
 
 export function SkyCanvas() {
-
   return (
     <Canvas
       camera={{
@@ -67,6 +67,7 @@ export function SkyCanvas() {
     >
       <color attach="background" args={['#000000']} />
       <CameraManager />
+      <CompassLayer /> 
       <SceneReadySignal />
       <HorizonLayer />
       <CelestialSphere />
