@@ -13,15 +13,34 @@ interface Section {
 const SECTIONS: readonly Section[] = [
   {
     heading: 'Star catalog',
-    lines: ['HYG Database by Astronexus, compiled from the Hipparcos, Yale Bright Star and Gliese catalogs.'],
-  },
-  { heading: 'Constellation lines', lines: ['Stellarium, Western sky culture v1.0.'] },
-  { 
-    heading: 'Information', 
     lines: [
-      'Descriptions adapted from Wikipedia (CC BY-SA 4.0).',
-      'Planetary facts from NASA NSSDCA.'
-    ] 
+      'HYG Database v4.1 by David Nash (Astronexus), compiled from the Hipparcos, Yale Bright Star and Gliese catalogs. Licence: CC BY-SA 4.0.',
+      'Modified for oneSky: filtered, deduplicated and reformatted.',
+      'Contains data from the ESA Hipparcos mission.',
+      'https://github.com/astronexus/HYG-Database',
+    ],
+  },
+  {
+    heading: 'Constellation lines and names',
+    lines: [
+      'Stellarium “modern” sky culture, by the Stellarium team. Licence: CC BY-SA 4.0.',
+      'Modified for oneSky: converted to pairs of Hipparcos star numbers.',
+      'https://github.com/Stellarium/stellarium',
+    ],
+  },
+  {
+    heading: 'Information',
+    lines: [
+      'Object descriptions were written for oneSky.',
+      'Planetary facts from the NASA NSSDCA planetary fact sheets.',
+    ],
+  },
+  {
+    heading: 'Data licence',
+    lines: [
+      'The star, constellation and description data in oneSky are adapted from CC BY-SA 4.0 sources and are shared under the same licence.',
+      'https://creativecommons.org/licenses/by-sa/4.0/',
+    ],
   },
   { heading: 'Satellite orbits', lines: ['Orbital elements from CelesTrak.'] },
   { heading: 'Astronomy', lines: ['astronomy-engine (MIT)', 'satellite.js (MIT)'] },

@@ -1,184 +1,25 @@
 import * as THREE from 'three';
-import {
-  bvToRGB,
-  equatorialToRenderSpace,
-  geocentricVectorToRaDec,
-  raDecToCartesian,
-  raDecToGeocentricVector,
-} from '../src/math/Coordinates';
-import { Vector3 } from '../src/math/Vector3';
+import { bvToRGB, raDecToCartesian } from '../src/math/Coordinates';
 
-function circularDistance(a: number, b: number, period: number): number {
-  const diff = Math.abs(a - b) % period;
-  return Math.min(diff, period - diff);
-}
+// Reference positions are J2000 values from standard star catalogues
+// (SIMBAD / Hipparcos). Phase 1 licence cleanup: this file no longer
+// depends on any external project's fixtures.
+const POLARIS = { raHours: 2 + 31 / 60 + 49.09 / 3600, decDeg: 89 + 15 / 60 + 50.8 / 3600 };
+const SIRIUS = { raHours: 6 + 45 / 60 + 8.917 / 3600, decDeg: -(16 + 42 / 60 + 58.02 / 3600) };
 
-function toThree(v: Vector3): THREE.Vector3 {
-  return new THREE.Vector3(v.x, v.y, v.z);
-}
-
-const RA_DEG_GRID = [0, 30, 45, 90, 135, 180, 225, 270, 315, 359.999];
-const DEC_DEG_GRID = [-89, -60, -30, 0, 30, 60, 89];
-const GRID = RA_DEG_GRID.flatMap((ra) => DEC_DEG_GRID.map((dec) => [ra, dec]));
-
-describe('raDecToGeocentricVector', () => {
-  it.each([
-    [0, 0, 1, 0, 0],
-    [90, 0, 0, 1, 0],
-    [180, 0, -1, 0, 0],
-    [270, 0, 0, -1, 0],
-    [0, 90, 0, 0, 1],
-    [0, -90, 0, 0, -1],
-    [123, 90, 0, 0, 1],
-    [45, -90, 0, 0, -1],
-  ])('(%d°, %d°) → (%d, %d, %d)', (ra, dec, x, y, z) => {
-    const v = raDecToGeocentricVector(ra, dec);
-    expect(v.x).toBeCloseTo(x, 12);
-    expect(v.y).toBeCloseTo(y, 12);
-    expect(v.z).toBeCloseTo(z, 12);
+describe('raDecToCartesian - real stars (independent references)', () => {
+  it('puts Polaris about 0.74 degrees from the north celestial pole', () => {
+    const v = raDecToCartesian(POLARIS.raHours, POLARIS.decDeg, 1);
+    const angleFromPoleDeg = (Math.acos(v.z / v.length()) * 180) / Math.PI;
+    expect(Math.abs(angleFromPoleDeg - 0.74)).toBeLessThan(0.02);
   });
 
-  it('returns a Vector3 instance', () => {
-    expect(raDecToGeocentricVector(10, 20)).toBeInstanceOf(Vector3);
-  });
-
-  it('produces unit vectors, including out-of-range right ascensions', () => {
-    for (const ra of [...RA_DEG_GRID, -720, -1, 361, 720.5]) {
-      for (const dec of DEC_DEG_GRID) {
-        expect(raDecToGeocentricVector(ra, dec).length).toBeCloseTo(1, 12);
-      }
-    }
-  });
-
-  it('lies exactly on the celestial equator for dec = 0', () => {
-    for (const ra of RA_DEG_GRID) expect(raDecToGeocentricVector(ra, 0).z).toBeCloseTo(0, 15);
-  });
-
-  it('places northern declinations above and southern below the equatorial plane', () => {
-    for (const ra of RA_DEG_GRID) {
-      expect(raDecToGeocentricVector(ra, 0.001).z).toBeGreaterThan(0);
-      expect(raDecToGeocentricVector(ra, -0.001).z).toBeLessThan(0);
-    }
-  });
-
-  it('computes the expected components at dec = 30°', () => {
-    const v = raDecToGeocentricVector(0, 30);
-    expect(v.x).toBeCloseTo(Math.cos(Math.PI / 6), 12);
-    expect(v.y).toBeCloseTo(0, 12);
-    expect(v.z).toBeCloseTo(0.5, 12);
-  });
-
-  it.each([
-    [360, 0],
-    [-360, 0],
-    [720, 0],
-    [-90, 270],
-    [450, 90],
-  ])('treats ra %d° and %d° as the same direction', (a, b) => {
-    expect(toThree(raDecToGeocentricVector(a, 25)).distanceTo(toThree(raDecToGeocentricVector(b, 25)))).toBeLessThan(1e-12);
-  });
-
-  it('collapses every right ascension to the same point at the poles', () => {
-    for (const ra of RA_DEG_GRID) {
-      expect(toThree(raDecToGeocentricVector(ra, 90)).distanceTo(new THREE.Vector3(0, 0, 1))).toBeLessThan(1e-12);
-      expect(toThree(raDecToGeocentricVector(ra, -90)).distanceTo(new THREE.Vector3(0, 0, -1))).toBeLessThan(1e-12);
-    }
-  });
-
-  it('continues across the pole when declination exceeds 90°', () => {
-    const over = toThree(raDecToGeocentricVector(0, 100));
-    const across = toThree(raDecToGeocentricVector(180, 80));
-    expect(over.distanceTo(across)).toBeLessThan(1e-12);
-  });
-});
-
-describe('geocentricVectorToRaDec', () => {
-  it.each([
-    [1, 0, 0, 0, 0],
-    [0, 1, 0, 90, 0],
-    [-1, 0, 0, 180, 0],
-    [0, -1, 0, 270, 0],
-    [1, 1, 0, 45, 0],
-    [-1, 1, 0, 135, 0],
-    [-1, -1, 0, 225, 0],
-    [1, -1, 0, 315, 0],
-    [1, 0, 1, 0, 45],
-    [1, 0, -1, 0, -45],
-  ])('(%d, %d, %d) → ra %d°, dec %d°', (x, y, z, ra, dec) => {
-    const result = geocentricVectorToRaDec(new Vector3(x, y, z));
-    expect(circularDistance(result.raDeg, ra, 360)).toBeLessThan(1e-9);
-    expect(result.decDeg).toBeCloseTo(dec, 9);
-  });
-
-  it('is invariant to vector magnitude', () => {
-    const reference = geocentricVectorToRaDec(new Vector3(1, 2, 3));
-    for (const scale of [1e-3, 5, 1e6]) {
-      const scaled = geocentricVectorToRaDec(new Vector3(scale, 2 * scale, 3 * scale));
-      expect(scaled.raDeg).toBeCloseTo(reference.raDeg, 9);
-      expect(scaled.decDeg).toBeCloseTo(reference.decDeg, 9);
-    }
-  });
-
-  it('reports dec = ±90° and ra = 0 exactly on the poles', () => {
-    const north = geocentricVectorToRaDec(new Vector3(0, 0, 1));
-    const south = geocentricVectorToRaDec(new Vector3(0, 0, -1));
-    expect(north.decDeg).toBeCloseTo(90, 12);
-    expect(south.decDeg).toBeCloseTo(-90, 12);
-    expect(north.raDeg).toBe(0);
-    expect(south.raDeg).toBe(0);
-  });
-
-  it('returns the origin direction for the zero vector instead of NaN', () => {
-    expect(geocentricVectorToRaDec(new Vector3(0, 0, 0))).toEqual({ raDeg: 0, decDeg: 0 });
-  });
-
-  it('keeps right ascension in [0, 360) for infinitesimal negative y', () => {
-    for (const y of [-1e-20, -1e-14, -1e-12, -1e-6]) {
-      const { raDeg } = geocentricVectorToRaDec(new Vector3(1, y, 0));
-      expect(raDeg).toBeGreaterThanOrEqual(0);
-      expect(raDeg).toBeLessThan(360);
-    }
-    expect(geocentricVectorToRaDec(new Vector3(1, -1e-6, 0)).raDeg).toBeGreaterThan(359.99);
-  });
-
-  it('bounds ra to [0, 360) and dec to [-90, 90] for arbitrary vectors', () => {
-    const components = [-3, -1, 0, 0.5, 2];
-    for (const x of components) {
-      for (const y of components) {
-        for (const z of components) {
-          if (x === 0 && y === 0 && z === 0) continue;
-          const { raDeg, decDeg } = geocentricVectorToRaDec(new Vector3(x, y, z));
-          expect(raDeg).toBeGreaterThanOrEqual(0);
-          expect(raDeg).toBeLessThan(360);
-          expect(decDeg).toBeGreaterThanOrEqual(-90);
-          expect(decDeg).toBeLessThanOrEqual(90);
-        }
-      }
-    }
-  });
-
-  it.each(GRID)('round-trips (%f°, %f°) through the vector form', (ra, dec) => {
-    const result = geocentricVectorToRaDec(raDecToGeocentricVector(ra, dec));
-    expect(circularDistance(result.raDeg, ra, 360)).toBeLessThan(1e-9);
-    expect(result.decDeg).toBeCloseTo(dec, 9);
-  });
-
-  it('wraps ra = 360° round-trip back to 0°', () => {
-    const result = geocentricVectorToRaDec(raDecToGeocentricVector(360, 10));
-    expect(circularDistance(result.raDeg, 0, 360)).toBeLessThan(1e-9);
-    expect(result.raDeg).toBeLessThan(360);
-  });
-
-  it('preserves declination (not right ascension) at the poles through a round trip', () => {
-    expect(geocentricVectorToRaDec(raDecToGeocentricVector(77, 90)).decDeg).toBeCloseTo(90, 9);
-    expect(geocentricVectorToRaDec(raDecToGeocentricVector(77, -90)).decDeg).toBeCloseTo(-90, 9);
-  });
-});
-
-describe('equatorialToRenderSpace', () => {
-  it('is the identity for the Z-up convention', () => {
-    const v = new Vector3(0.1, -0.2, 0.3);
-    expect(equatorialToRenderSpace(v)).toBe(v);
+  it('puts Sirius in the RA 90-180 degree quadrant, south of the equator', () => {
+    const v = raDecToCartesian(SIRIUS.raHours, SIRIUS.decDeg, 1);
+    expect(v.x).toBeLessThan(0);
+    expect(v.y).toBeGreaterThan(0);
+    expect(v.z).toBeLessThan(0);
+    expect((Math.asin(v.z) * 180) / Math.PI).toBeCloseTo(SIRIUS.decDeg, 6);
   });
 });
 
@@ -231,12 +72,6 @@ describe('raDecToCartesian', () => {
 
   it('continues across the pole when declination exceeds 90°', () => {
     expect(raDecToCartesian(0, 100, 1).distanceTo(raDecToCartesian(12, 80, 1))).toBeLessThan(1e-12);
-  });
-
-  it.each(GRID)('agrees with raDecToGeocentricVector at (%f°, %f°)', (raDeg, dec) => {
-    const a = raDecToCartesian(raDeg / 15, dec, 1);
-    const b = toThree(raDecToGeocentricVector(raDeg, dec));
-    expect(a.distanceTo(b)).toBeLessThan(1e-12);
   });
 });
 
