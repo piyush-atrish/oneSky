@@ -8,7 +8,8 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const OUT = 'src/data/thirdPartyNotices.ts';
-const names = JSON.parse(readFileSync(new URL('./bundled-packages.json', import.meta.url), 'utf8'));
+const entries = JSON.parse(readFileSync(new URL('./bundled-packages.json', import.meta.url), 'utf8'));
+// Each entry is a package folder such as "node_modules/react-native/node_modules/scheduler" (a bare package name also works).
 
 const norm = (t) => t.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
 const isCopyrightLine = (l) => /^\s*(copyright|\(c\)|©)/i.test(l);
@@ -32,6 +33,7 @@ const squash = (t) => norm(t).replace(/\s+/g, ' ');
 //   github.com/cosinekitty/astronomy    - Copyright (c) 2019-2025 Don Cross <cosinekitty@gmail.com>
 const UPSTREAM_MIT = {
   '@react-native/assets-registry': 'Copyright (c) Meta Platforms, Inc. and affiliates.',
+  '@react-native/asset-utils': 'Copyright (c) Meta Platforms, Inc. and affiliates.',
   '@react-native/js-polyfills': 'Copyright (c) Meta Platforms, Inc. and affiliates.',
   '@react-native/normalize-colors': 'Copyright (c) Meta Platforms, Inc. and affiliates.',
   '@react-native/virtualized-lists': 'Copyright (c) Meta Platforms, Inc. and affiliates.',
@@ -44,8 +46,8 @@ function findLicenseFile(dir) {
   const f = readdirSync(dir).find((n) => /^(licen[sc]e|copying|notice)(\.(md|txt))?$/i.test(n));
   return f ? join(dir, f) : null;
 }
-function findPackageDir(name) {
-  const p = join('node_modules', name);
+function findPackageDir(entry) {
+  const p = entry.startsWith('node_modules/') ? entry : join('node_modules', entry);
   return existsSync(join(p, 'package.json')) ? p : null;
 }
 
@@ -53,10 +55,14 @@ const notices = [];
 const fullTexts = {}; // key -> text, for packages whose licence text is not the standard MIT text
 const problems = [];
 
-for (const name of names) {
-  const dir = findPackageDir(name);
-  if (!dir) { problems.push(`${name}: not found in node_modules (run npm ci)`); continue; }
+const seen = new Set();
+for (const entry of entries) {
+  const dir = findPackageDir(entry);
+  if (!dir) { problems.push(`${entry}: folder not found (run npm ci, then the export and list steps again)`); continue; }
   const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  const name = pkg.name;
+  if (seen.has(`${name}@${pkg.version}`)) continue; // same package and version bundled from two places
+  seen.add(`${name}@${pkg.version}`);
   const license = typeof pkg.license === 'object' ? pkg.license.type : pkg.license ?? 'UNKNOWN';
   const file = findLicenseFile(dir);
   const raw = file ? readFileSync(file, 'utf8') : '';
@@ -84,7 +90,7 @@ for (const name of names) {
   notices.push({ name: pkg.name, version: pkg.version, license, copyright: [copyright, ...fontCopyright.map((c) => `Fonts: ${c}`)].filter(Boolean).join(' / '), textKey, url: repo.replace(/^git\+/, '').replace(/\.git$/, '') });
 }
 
-notices.sort((a, b) => a.name.localeCompare(b.name));
+notices.sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
 const texts = { MIT: STANDARD.MIT, ...fullTexts };
 const used = new Set(notices.map((n) => n.textKey));
 for (const k of Object.keys(texts)) if (!used.has(k)) delete texts[k];
@@ -110,4 +116,16 @@ export const LICENSE_TEXTS: Readonly<Record<string, string>> = ${JSON.stringify(
 `;
 writeFileSync(OUT, out);
 console.log(`Wrote ${notices.length} notices and ${Object.keys(texts).length} licence texts to ${OUT}`);
+
+// Licence mix, and a warning for anything that is not on the permissive allow-list.
+const ALLOWED = /^(MIT|ISC|BSD-2-Clause|BSD-3-Clause|Apache-2\.0|0BSD|CC0-1\.0|Unlicense|OFL-1\.1|MIT AND OFL-1\.1)$/;
+const mix = {};
+for (const n of notices) mix[n.license] = (mix[n.license] ?? 0) + 1;
+console.log('Licence mix:', Object.entries(mix).map(([k, v]) => `${v} ${k}`).join(', '));
+const review = notices.filter((n) => !ALLOWED.test(n.license));
+if (review.length) {
+  console.warn('REVIEW these licences before release (not on the permissive allow-list):\n - ' +
+    review.map((n) => `${n.name}@${n.version}: ${n.license}`).join('\n - '));
+  process.exitCode = 1;
+}
 if (problems.length) { console.warn('Check these:\n - ' + problems.join('\n - ')); process.exitCode = 1; }

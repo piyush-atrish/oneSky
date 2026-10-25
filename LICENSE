@@ -1,4 +1,37 @@
-Copyright (c) 2026 Piyush Atrish
-All Rights Reserved.
+oneSky - licence overview
 
-This project and its source code are proprietary and confidential. You may not copy, modify, distribute, or use this code, in whole or in part, without the express written permission of the author.
+This repository contains material under different licences. Which licence applies depends on the file.
+
+1. Application source code (proprietary)
+
+Copyright (c) 2026 Piyush Atrish. All rights reserved.
+
+The oneSky application source code - everything in this repository except the material described in
+sections 2 and 3 - is proprietary. You may not copy, modify, distribute or use it, in whole or in part,
+without the written permission of the copyright holder, except as granted in a separate written agreement
+(for example a client or handover agreement).
+
+2. Sky data (CC BY-SA 4.0)
+
+The following files adapt data from the HYG star database (CC BY-SA 4.0) and from Stellarium's "modern"
+sky culture (text and data CC BY-SA 4.0), and are themselves licensed under the Creative Commons
+Attribution-ShareAlike 4.0 International licence:
+
+  src/data/starCatalog.ts
+  src/data/constellationLines.ts
+  src/data/entityDetails.ts
+
+Licence text: https://creativecommons.org/licenses/by-sa/4.0/legalcode
+The same files and the scripts that build them are published at https://github.com/piyush-atrish/onesky-data
+Sources, authors and the changes made are listed in NOTICE.md and in the header comment of each file.
+
+3. Third-party software, fonts and data (their own licences)
+
+oneSky includes open-source packages and fonts that are licensed by their authors (MIT, ISC, BSD-3-Clause
+and the SIL Open Font License 1.1). These are not covered by section 1. Their copyright notices and licence
+texts are in NOTICE.md, in src/data/thirdPartyNotices.ts, and in the app under About > Open-source licences.
+
+4. No warranty
+
+Everything is provided "as is", without warranty of any kind. The astronomical data is not intended for
+navigation or any safety-critical use.
