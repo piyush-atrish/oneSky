@@ -10,22 +10,9 @@
  */
 
 import { create } from 'zustand';
-import { TWO_PI } from '../math/MathConstants';
 
-/**
- * Elevation floor: straight at the horizon.
- *
- * NOTE — this is a deliberate narrowing from the original architecture
- * doc, which specified elevation clamped to [-1.4, 1.4] (allowing the
- * camera to tilt *below* the horizon). This task's spec calls for a
- * floor of `0` instead. Given `TerrainLayer` is an opaque ground plane,
- * tilting below the horizon currently shows nothing but flat dark
- * terrain either way, so `0` is a defensible simplification — but it's
- * a real, deliberate deviation from the original doc, not an
- * accidental one, and worth confirming is actually what's wanted (e.g.
- * if a future milestone wants the user to look down and see nearby
- * terrain detail, this floor would need to move back to `-1.4`).
- */
+const TWO_PI = Math.PI * 2;
+
 const MIN_ELEVATION_RAD = -1.3;
 
 /** Elevation ceiling: just short of the zenith, matching the original architecture doc's gimbal-lock guard. */

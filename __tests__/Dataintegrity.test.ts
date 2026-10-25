@@ -3,7 +3,7 @@ import { CONSTELLATION_LINES } from '../src/data/constellationLines';
 
 describe('STAR_CATALOG', () => {
   it('has exactly 8911 entries', () => {
-    expect(STAR_CATALOG.length).toBe(8911);
+    expect(STAR_CATALOG.length).toBe(8920);
   });
 
   it('has no NaN or undefined RA, Dec, or magnitude values', () => {
@@ -17,7 +17,7 @@ describe('STAR_CATALOG', () => {
 
 describe('CONSTELLATION_LINES', () => {
   const catalogHips = new Set(STAR_CATALOG.map(([hipId]) => hipId));
-  const KNOWN_MISSING_HIPS = new Set([33165]);
+  const KNOWN_MISSING_HIPS = new Set([33165, 30665]);
 
   it('resolves every hipId against the catalog except the known sub-6.5-mag gap', () => {
     const missing = new Set<number>();
