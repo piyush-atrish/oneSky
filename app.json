@@ -13,7 +13,10 @@
           "backgroundColor": "#474747",
           "image": "./assets/icon.png"
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font",
+      "expo-status-bar"
     ],
     "ios": {
       "supportsTablet": true

@@ -57,6 +57,11 @@ const textTitle = (key: string) => (key === 'MIT' ? 'MIT licence (standard text)
 
 /** Full licence notices for the open-source packages bundled into the app. */
 function LicencesView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
+  // Deduplicate NOTICES by package name to prevent React key warnings
+  const uniqueNotices = NOTICES.filter(
+    (notice, index, self) => index === self.findIndex((t) => t.name === notice.name)
+  );
+
   return (
     <ErrorCard
       title="Open-source licences"
@@ -71,7 +76,7 @@ function LicencesView({ onBack, onClose }: { onBack: () => void; onClose: () => 
         <Text accessibilityRole="header" style={styles.heading} maxFontSizeMultiplier={MAX_FONT_SCALE.heading}>
           Packages
         </Text>
-        {NOTICES.map((n) => (
+        {uniqueNotices.map((n) => (
           <View key={n.name} style={styles.notice}>
             <Text style={styles.line} maxFontSizeMultiplier={MAX_FONT_SCALE.small}>
               {n.name} {n.version} ({n.license})
