@@ -14,6 +14,13 @@ interface Section {
 
 const SECTIONS: readonly Section[] = [
   {
+    heading: 'Privacy',
+    lines: [
+      'oneSky does not collect personal information. Your location is used only on your device.',
+      'Privacy policy: https://piyush-atrish.github.io/onesky-privacy/',
+    ],
+  },
+  {
     heading: 'Star catalog',
     lines: [
       'HYG Database v4.1 by David Nash (Astronexus), compiled from the Hipparcos, Yale Bright Star and Gliese catalogs. Licence: CC BY-SA 4.0.',
@@ -34,7 +41,6 @@ const SECTIONS: readonly Section[] = [
     heading: 'Information',
     lines: [
       'Object descriptions were written for oneSky.',
-      'The interface icons were drawn for oneSky.',
       'Planetary facts from the NASA NSSDCA planetary fact sheets.',
     ],
   },
@@ -44,6 +50,18 @@ const SECTIONS: readonly Section[] = [
       'The star, constellation and description data in oneSky are adapted from CC BY-SA 4.0 sources and are shared under the same licence.',
       'Data files and build scripts: https://github.com/piyush-atrish/onesky-data',
       'https://creativecommons.org/licenses/by-sa/4.0/',
+    ],
+  },
+  {
+    heading: 'Icons',
+    lines: [
+      'Interface icons from IconScout (https://iconscout.com), credited to their creators:',
+      'Info: Hajicon',
+      'Terrain and space station: Directico Kit',
+      'Planet: Phosphor Icons (MIT licence, Copyright (c) 2020 Phosphor Icons)',
+      'Constellation: Garoks',
+      'Tools: HJ Project',
+      'Location: Uniconlabs',
     ],
   },
   { heading: 'Satellite orbits', lines: ['Orbital elements from CelesTrak.'] },
