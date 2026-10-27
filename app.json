@@ -2,7 +2,7 @@
   "expo": {
     "name": "onesky",
     "slug": "onesky",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -12,6 +12,24 @@
         {
           "backgroundColor": "#474747",
           "image": "./assets/icon.png"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "oneSky uses your location to show the stars overhead right now. It is only used on your device to calculate the sky.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false,
+          "isIosBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false
+          }
         }
       ],
       "expo-asset",
@@ -27,7 +45,11 @@
         "backgroundColor": "#0B0D17"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.piyushtest19steam.onesky"
+      "package": "com.piyushtest19steam.onesky",
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
